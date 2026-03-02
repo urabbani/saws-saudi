@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Last Scientific Audit**: March 2026 - See [SCIENTIFIC_IMPROVEMENTS.md](docs/SCIENTIFIC_IMPROVEMENTS.md)
+
 ## Project Overview
 
 **Saudi AgriDrought Warning System (SAWS)** is a full-stack agricultural drought monitoring platform for Saudi Arabia's Eastern Province. It provides GIS visualization, satellite data integration via Google Earth Engine, crop health monitoring, and real-time alerts for agricultural management.
@@ -207,8 +209,8 @@ The frontend uses these service modules:
 - Google Earth Engine: Explicit CRS transformation
 - Leaflet: Default WGS84 projection
 
-**Eastern Province Bounds** (Accurate):
-- Longitude: 49.0°E to 55.0°E
+**Eastern Province Bounds** (Corrected - March 2026):
+- Longitude: **45.0°E to 55.0°E** (extended from 49°E to include Hafar Al-Batin)
 - Latitude: 24.0°N to 28.0°N
 - Major Districts: Al-Hasa, Qatif, Hofuf, Dammam, Al-Khobar, Al-Jubail, Hafar Al-Batin
 
@@ -266,6 +268,51 @@ The system calculates 20+ vegetation indices for Saudi arid agriculture:
 - **VHI**: Vegetation Health Index (WMO standard)
 - **TCI**: Temperature Condition Index
 
+## Scientific Methodology
+
+### SPEI Calculation (WMO Compliant)
+
+The SPEI calculation follows Vicente-Serrano et al. (2010) methodology:
+
+```python
+# 1. Calculate monthly P-ET (precipitation minus evapotranspiration)
+# 2. Sum over time scale (3, 6, 12 months)
+# 3. Fit log-logistic distribution using L-moments
+alpha, beta, gamma = fit_log_logistic_params(pet_series)
+
+# 4. Transform to cumulative probability
+probability = log_logistic_cdf(value, alpha, beta, gamma)
+
+# 5. Convert to standard normal Z-score (this is SPEI)
+spei = standard_normal_ppf(probability)
+```
+
+**Critical**: Do NOT use simple z-score normalization. SPEI must follow standard normal distribution (mean≈0, std≈1).
+
+### Time-Series Analysis
+
+**Anomaly Detection**:
+- Z-score method with 2.5σ threshold (≈99% confidence)
+- Moving window baseline for adaptive detection
+- Severity classification: moderate (< 3.5σ) vs extreme (> 3.5σ)
+
+**Change Point Detection**:
+- Two-sample t-test for regime shifts
+- Minimum 5-point windows for stability
+- Significance level: α = 0.05
+
+**Missing Data Imputation**:
+- Linear interpolation (default)
+- Seasonal adjustment for agricultural data
+- Maximum gap: 16 days (MODIS cycle)
+
+### Validation Requirements
+
+All index calculations MUST include:
+- `validate_index_value()`: Bounds checking, NaN/Inf detection
+- `calculate_index_uncertainty()`: Error propagation, confidence intervals
+- Quality flags: excellent/good/moderate/poor
+
 ## API Endpoints
 
 ### Fields
@@ -309,11 +356,18 @@ The system calculates 20+ vegetation indices for Saudi arid agriculture:
 | -1.5 to -1.0 | Mild Drought | Monitor |
 | > -1.0 | Normal | No action |
 
-### Saudi Crop-Specific Thresholds
-- **Dates**: NDVI > 0.45 (excellent), < 0.30 (poor)
-- **Wheat**: NDVI > 0.35 (excellent), < 0.25 (poor)
-- **Tomatoes**: NDVI > 0.40 (excellent), < 0.30 (poor)
-- **Alfalfa**: NDVI > 0.45 (excellent), < 0.35 (poor)
+### Saudi Crop-Specific Thresholds (Updated - March 2026)
+
+| Crop | Excellent | Good | Moderate | Poor |
+|------|-----------|------|----------|------|
+| **Dates** | > 0.50 | > 0.40 | > 0.35 | < 0.30 |
+| **Wheat** | > 0.45 | > 0.35 | > 0.30 | < 0.25 |
+| **Tomatoes** | > 0.50 | > 0.40 | > 0.35 | < 0.30 |
+| **Alfalfa** | > 0.55 | > 0.45 | > 0.40 | < 0.35 |
+| **Sorghum** | > 0.35 | > 0.30 | > 0.25 | < 0.25 |
+| **Citrus** | > 0.50 | > 0.45 | > 0.40 | < 0.40 |
+
+**Phenology-Aware Classification**: Thresholds adjust based on crop growth stage
 
 ## Background Tasks
 

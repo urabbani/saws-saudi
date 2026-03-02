@@ -312,7 +312,7 @@ class GeeClient:
                             scale=30,
                             maxPixels=1e9,
                         )
-                        .get("NDVI")
+                        .get("EVI")
                     )
                     evi_value = evi.getInfo()
 

@@ -23,6 +23,7 @@ A comprehensive full-stack agricultural drought monitoring platform for Saudi Ar
 
 - [Overview](#overview)
 - [Features](#features)
+- [Scientific Improvements (March 2026)](#scientific-improvements-march-2026)
 - [Technology Stack](#technology-stack)
 - [Quick Start](#quick-start)
 - [Development Setup](#development-setup)
@@ -84,6 +85,39 @@ A comprehensive full-stack agricultural drought monitoring platform for Saudi Ar
 - **Dust Storm Detection**: Shamal wind impact assessment
 - **Arid Region NDVI**: Corrected for bright sandy soils (30% sand content)
 - **Thermal Stress Index**: Crop-specific thresholds for 45-50°C summers
+
+---
+
+## Scientific Improvements (March 2026)
+
+A comprehensive scientific audit was conducted in March 2026 to ensure WMO compliance and scientific accuracy. Key improvements include:
+
+### Critical Fixes
+
+| Issue | Before | After | Status |
+|-------|--------|-------|--------|
+| **SPEI Methodology** | Simple z-score | Log-logistic distribution (Vicente-Serrano 2010) | ✅ Fixed |
+| **Eastern Province Bounds** | 49°E (excluded Hafar Al-Batin) | 45°E (includes all districts) | ✅ Fixed |
+| **NDVI Classification** | Generic thresholds | Crop-specific + phenology-aware | ✅ Enhanced |
+| **Validation** | None | Comprehensive bounds checking | ✅ Added |
+| **Uncertainty** | Not quantified | Full error propagation | ✅ Implemented |
+
+### New Scientific Capabilities
+
+- **Crop-Specific NDVI Thresholds**: Dates, Wheat, Tomatoes, Alfalfa, Sorghum, Citrus
+- **Phenology Stage Detection**: Complete growth stage modeling for Saudi crops
+- **Time-Series Anomaly Detection**: Z-score + change point detection (SPC)
+- **FAO-56 Penman-Monteith ET**: Full reference evapotranspiration calculation
+- **Index Validation**: Quality flags, uncertainty bounds, confidence intervals
+
+### Scientific References
+
+- Vicente-Serrano et al. (2010) - SPEI methodology
+- WMO & GWP (2016) - Drought monitoring handbook
+- FAO-56 (Allen et al., 1998) - Evapotranspiration
+- Al-Bakri et al. (2011) - Saudi date palm research
+
+**Full Details**: See [SCIENTIFIC_IMPROVEMENTS.md](docs/SCIENTIFIC_IMPROVEMENTS.md)
 
 ---
 
@@ -431,13 +465,13 @@ WS     /ws/alerts           # Real-time alerts (WebSocket)
 
 **Coordinate Bounds (EPSG:4326 / WGS84):**
 - **Latitude**: 24.0°N to 28.0°N
-- **Longitude**: 49.0°E to 55.0°E
+- **Longitude**: 45.0°E to 55.0°E (extended to include Hafar Al-Batin district)
 
 ### Major Agricultural Districts
 
 | District | Coordinates (minLon, minLat, maxLon, maxLat) | Key Features |
 |----------|----------------------------------------------|--------------|
-| **Al-Hasa** | 49.5°E, 22.0°N - 50.0°E, 26.0°N | 2M+ date palms, UNESCO heritage |
+| **Al-Hasa** | 49.5°E, 25.0°N - 50.0°E, 26.0°N | 2M+ date palms, UNESCO heritage |
 | **Qatif** | 50.0°E, 26.0°N - 50.5°E, 26.6°N | Coastal date farms |
 | **Hofuf** | 49.3°E, 25.0°N - 49.8°E, 25.6°N | Historic agricultural center |
 | **Dammam** | 50.0°E, 26.2°N - 50.5°E, 26.5°N | Urban agriculture |

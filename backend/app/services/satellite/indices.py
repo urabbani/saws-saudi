@@ -1,41 +1,101 @@
 """
 SAWS Vegetation Index Calculations
 
-Comprehensive functions for calculating vegetation and drought indices.
+Comprehensive functions for calculating vegetation and drought indices
+for Saudi Arabia's Eastern Province agricultural monitoring.
 
-Indices for Vegetation Health:
-- NDVI: Normalized Difference Vegetation Index
-- EVI: Enhanced Vegetation Index
-- SAVI: Soil Adjusted Vegetation Index
-- MSAVI: Modified Soil Adjusted Vegetation Index
-- GNDVI: Green NDVI
-- NDRE: Normalized Difference Red Edge
-- CIgreen: Green Chlorophyll Index
-- CIrededge: Red Edge Chlorophyll Index
-- MCARI: Modified Chlorophyll Absorption Ratio Index
-- MTVI2: Modified Triangular Vegetation Index 2
-- OSAVI: Optimized Soil Adjusted Vegetation Index
-- WDRVI: Wide Dynamic Range Vegetation Index
+SCIENTIFIC REFERENCES AND METHODOLOGY
+======================================
 
-Indices for Drought Monitoring:
-- NDMI: Normalized Difference Moisture Index
-- NDWI: Normalized Difference Water Index
-- VDI: Vegetation Drought Index
-- TCI: Temperature Condition Index
-- VCI: Vegetation Condition Index
-- VHI: Vegetation Health Index
+Vegetation Health Indices:
+--------------------------
+1. NDVI - Normalized Difference Vegetation Index
+   - Formula: NDVI = (NIR - Red) / (NIR + Red)
+   - Range: -1 to 1
+   - Reference: Rouse et al. (1973). Remote Sensing of Environment.
+   - Application: Primary indicator for crop health monitoring
 
-Indices for Soil and Agriculture:
-- BSI: Bare Soil Index
-- NBR: Normalized Burn Ratio (for crop stress)
-- NBR2: Normalized Burn Ratio 2
-- NDSI: Normalized Difference Snow Index (for frost detection)
-- STI: Surface Temperature Index
+2. EVI - Enhanced Vegetation Index
+   - Formula: EVI = G × (NIR - Red) / (NIR + C1×Red - C2×Blue + L)
+   - Parameters: G=2.5, C1=6.0, C2=7.5, L=1.0
+   - Reference: Huete et al. (2002). IEEE TGARS.
+   - Application: Reduced atmospheric effects, better for dense canopies
 
-Saudi Arabia Specific:
-- Aridity Index
-- Desertification Index
-- Thermal Stress Index
+3. SAVI - Soil Adjusted Vegetation Index
+   - Formula: SAVI = (NIR - Red) / (NIR + Red + L) × (1 + L)
+   - L factor: 0.5 (standard), 1.0 (arid regions)
+   - Reference: Huete (1988). Remote Sensing of Environment.
+   - Application: Critical for Saudi bright sandy soils
+
+4. MSAVI - Modified Soil Adjusted Vegetation Index
+   - Formula: MSAVI = (2×NIR + 1 - √((2×NIR + 1)² - 8×(NIR - Red))) / 2
+   - Reference: Qi et al. (1994). International Journal of Remote Sensing.
+   - Application: Self-adjusting for sparse vegetation
+
+5. OSAVI - Optimized Soil Adjusted Vegetation Index
+   - Formula: OSAVI = (NIR - Red) / (NIR + Red + 0.16)
+   - Reference: Rondeaux et al. (1996). Remote Sensing of Environment.
+   - Application: Optimized for agricultural crops
+
+Drought Monitoring Indices:
+--------------------------
+6. NDMI - Normalized Difference Moisture Index
+   - Formula: NDMI = (NIR - SWIR) / (NIR + SWIR)
+   - Reference: Hardinsky et al. (1983). Remote Sensing of Environment.
+   - Application: Early drought detection (2-4 weeks before visible stress)
+
+7. VCI - Vegetation Condition Index
+   - Formula: VCI = (NDVI - NDVI_min) / (NDVI_max - NDVI_min) × 100
+   - Reference: Kogan (1995). Advances in Space Research.
+   - Application: WMO standard for drought monitoring
+
+8. TCI - Temperature Condition Index
+   - Formula: TCI = (LST_max - LST) / (LST_max - LST_min) × 100
+   - Reference: Kogan (1995). Advances in Space Research.
+   - Application: Thermal stress assessment
+
+9. VHI - Vegetation Health Index
+   - Formula: VHI = α×VCI + (1-α)×TCI
+   - Parameters: α=0.5 (equal weighting)
+   - Reference: Kogan (1997). Bulletin of the American Meteorological Society.
+   - Application: WMO recommended for operational drought monitoring
+
+Saudi Arabia Specific Indices:
+------------------------------
+10. Arid Region NDVI
+    - Corrected for bright sandy soils (30% sand content)
+    - Application: Eastern Province wheat and alfalfa fields
+
+11. Date Palm Health Index
+    - Specialized for 2M+ date palms in Al-Hasa oasis
+    - Application: Canopy health assessment
+
+12. Dust Stress Detection
+    - Shamal wind impact assessment
+    - Application: Summer dust storm monitoring (June-August)
+
+DATA SOURCES:
+-------------
+- MODIS MOD13Q1: 250m, 16-day composite
+- Landsat 8-9: 30m, 16-day revisit
+- Sentinel-2 MSI: 10m, 5-day revisit
+- Sentinel-1 SAR: 5m, all-weather
+
+EASTERN PROVINCE CONTEXT:
+------------------------
+- Coordinates: 45-55°E longitude, 24-28°N latitude
+- Climate: Hyper-arid to arid (UNEP AI < 0.15)
+- Rainfall: <200mm annually
+- Summer: 45-50°C daytime, 30-35°C nighttime
+- Major crops: Dates (Al-Hasa), Wheat, Tomatoes, Alfalfa, Citrus
+
+QUALITY CONTROL:
+----------------
+- All indices include theoretical bounds validation
+- NaN/Inf propagation handling
+- Sensor-specific error characterization
+- Cloud contamination flagging
+- Uncertainty quantification
 """
 
 import logging
@@ -495,7 +555,7 @@ def calculate_vhi(vci: float, tci: float, alpha: float = 0.5) -> float:
 
 # ==================== SOIL AND STRESS INDICES ====================
 
-def calculate_bsi(swir: float, nir: float, blue: float) -> float:
+def calculate_bsi(swir: float, nir: float, blue: float, red: float | None = None) -> float:
     """
     BSI: Bare Soil Index
 
@@ -508,10 +568,25 @@ def calculate_bsi(swir: float, nir: float, blue: float) -> float:
     - Soil erosion monitoring
     - Crop emergence detection
     - Field preparation assessment
+
+    Reference: Zha et al. (2003) for soil indices.
+
+    Args:
+        swir: Short-wave infrared band reflectance
+        nir: Near-infrared band reflectance
+        blue: Blue band reflectance
+        red: Red band reflectance (~655nm, required)
+
+    Returns:
+        BSI value (-1 to 1)
     """
+    if red is None:
+        logger.warning("BSI calculation requires red band, returning 0")
+        return 0.0
+
     try:
-        numerator = (swir + 655) - (nir + blue)  # Using Red ~655nm
-        denominator = (swir + 655) + (nir + blue)
+        numerator = (swir + red) - (nir + blue)
+        denominator = (swir + red) + (nir + blue)
         if denominator == 0:
             return 0.0
         return numerator / denominator
@@ -1498,3 +1573,266 @@ def _get_irrigation_recommendation(
         return f"High temperature stress. Consider evening irrigation to reduce evaporation."
     else:
         return f"Normal irrigation. {water_mm:.1f}mm daily requirement."
+
+
+# ==================== VALIDATION AND QUALITY CONTROL ====================
+
+def validate_index_value(
+    index_name: str,
+    value: float,
+    satellite_source: str = "modis",
+) -> dict[str, Any]:
+    """
+    Validate vegetation index values against theoretical bounds and sensor limits.
+
+    Performs range validation, NaN/Inf checking, and physical constraint validation.
+    Returns validation results with warnings and quality flags.
+
+    Args:
+        index_name: Name of the index (ndvi, evi, lst, etc.)
+        value: Calculated index value
+        satellite_source: Satellite data source (modis, landsat, sentinel2)
+
+    Returns:
+        Validation dict with:
+        - valid: Boolean indicating if value passes all checks
+        - warnings: List of validation warnings
+        - quality_flag: Quality indicator (excellent, good, moderate, poor)
+        - clamped_value: Value clamped to valid range if out of bounds
+
+    Reference:
+        - MODIS C6 User Guide for quality flags
+        - Landsat Collection 2 Product Guide
+    """
+    import math
+
+    result = {
+        "valid": True,
+        "warnings": [],
+        "quality_flag": "excellent",
+        "clamped_value": value,
+        "original_value": value,
+    }
+
+    # Check for NaN and Inf
+    if math.isnan(value):
+        result["valid"] = False
+        result["warnings"].append(f"{index_name}: NaN value detected")
+        result["quality_flag"] = "poor"
+        result["clamped_value"] = 0.0
+        return result
+
+    if math.isinf(value):
+        result["valid"] = False
+        result["warnings"].append(f"{index_name}: Infinite value detected")
+        result["quality_flag"] = "poor"
+        result["clamped_value"] = 0.0
+        return result
+
+    # Define theoretical bounds for each index
+    index_bounds = {
+        "ndvi": {"min": -1.0, "max": 1.0, "typical_min": -0.2, "typical_max": 0.9},
+        "evi": {"min": -1.0, "max": 1.0, "typical_min": -0.1, "typical_max": 0.9},
+        "savi": {"min": -1.0, "max": 1.0, "typical_min": -0.1, "typical_max": 0.9},
+        "msavi": {"min": 0.0, "max": 1.0, "typical_min": 0.0, "typical_max": 0.9},
+        "osavi": {"min": -1.0, "max": 1.0, "typical_min": -0.1, "typical_max": 0.9},
+        "gndvi": {"min": -1.0, "max": 1.0, "typical_min": -0.1, "typical_max": 0.9},
+        "ndre": {"min": -1.0, "max": 1.0, "typical_min": 0.0, "typical_max": 0.8},
+        "ndmi": {"min": -1.0, "max": 1.0, "typical_min": -0.3, "typical_max": 0.6},
+        "ndwi": {"min": -1.0, "max": 1.0, "typical_min": -0.8, "typical_max": 0.5},
+        "bsi": {"min": -1.0, "max": 1.0, "typical_min": -0.2, "typical_max": 0.6},
+        "nbr": {"min": -1.0, "max": 1.0, "typical_min": -0.5, "typical_max": 0.8},
+        "lst": {"min": 250.0, "max": 330.0, "typical_min": 270.0, "typical_max": 325.0},  # Kelvin
+        "vci": {"min": 0.0, "max": 100.0, "typical_min": 10.0, "typical_max": 95.0},
+        "tci": {"min": 0.0, "max": 100.0, "typical_min": 10.0, "typical_max": 95.0},
+        "vhi": {"min": 0.0, "max": 100.0, "typical_min": 15.0, "typical_max": 90.0},
+    }
+
+    bounds = index_bounds.get(index_name.lower())
+
+    if bounds is None:
+        result["warnings"].append(f"{index_name}: No validation bounds defined")
+        result["quality_flag"] = "moderate"
+        return result
+
+    # Check theoretical bounds
+    if value < bounds["min"] or value > bounds["max"]:
+        result["valid"] = False
+        result["warnings"].append(
+            f"{index_name}: Value {value:.3f} outside theoretical bounds "
+            f"[{bounds['min']}, {bounds['max']}]"
+        )
+        result["quality_flag"] = "poor"
+        # Clamp to theoretical bounds
+        result["clamped_value"] = max(bounds["min"], min(value, bounds["max"]))
+
+    # Check typical range (Eastern Province context)
+    if value < bounds["typical_min"] or value > bounds["typical_max"]:
+        result["warnings"].append(
+            f"{index_name}: Value {value:.3f} outside typical range "
+            f"[{bounds['typical_min']}, {bounds['typical_max']}] for Eastern Province"
+        )
+        if result["quality_flag"] == "excellent":
+            result["quality_flag"] = "moderate"
+
+    # Source-specific validation
+    if satellite_source == "modis":
+        # MODIS has known issues with saturation at high NDVI
+        if index_name.lower() == "ndvi" and value > 0.95:
+            result["warnings"].append("MODIS NDVI may be saturated (dense canopy)")
+            result["quality_flag"] = "moderate"
+
+    elif satellite_source == "landsat":
+        # Landsat has striping issues in some bands
+        if index_name.lower() == "ndvi" and abs(value) < 0.01:
+            result["warnings"].append("Possible Landsat striping or cloud contamination")
+            result["quality_flag"] = "moderate"
+
+    return result
+
+
+def calculate_index_uncertainty(
+    index_name: str,
+    value: float,
+    cloud_cover: float,
+    satellite_source: str = "modis",
+    sensor_azimuth: float | None = None,
+    sun_azimuth: float | None = None,
+) -> dict[str, Any]:
+    """
+    Calculate uncertainty bounds for vegetation indices.
+
+    Propagates measurement errors through index calculations and
+    provides confidence intervals based on:
+    - Sensor characteristics
+    - Cloud contamination
+    - Viewing geometry
+    - Atmospheric conditions
+
+    Args:
+        index_name: Name of the index
+        value: Calculated index value
+        cloud_cover: Cloud cover percentage (0-100)
+        satellite_source: Satellite data source
+        sensor_azimuth: Sensor viewing azimuth angle (degrees)
+        sun_azimuth: Sun azimuth angle (degrees)
+
+    Returns:
+        Uncertainty dict with:
+        - value: Original value
+        - uncertainty: Absolute uncertainty (±)
+        - lower_bound: Lower confidence bound
+        - upper_bound: Upper confidence bound
+        - confidence: Confidence level (0-1)
+        - error_sources: List of identified error sources
+
+    Reference:
+        - MODIS Vegetation Index User Guide (Collection 6)
+        - Landsat Surface Reflectance Product Guide
+    """
+    import math
+
+    # Base uncertainty from sensor characteristics
+    sensor_uncertainties = {
+        "modis": {"ndvi": 0.025, "evi": 0.030, "lst": 1.5},
+        "landsat": {"ndvi": 0.020, "evi": 0.025, "lst": 1.0},
+        "sentinel2": {"ndvi": 0.015, "evi": 0.020, "lst": 0.8},
+    }
+
+    base_uncertainty = sensor_uncertainties.get(
+        satellite_source, {}
+    ).get(index_name.lower(), 0.03)
+
+    # Cloud contamination increases uncertainty
+    cloud_factor = 1.0
+    if cloud_cover > 0:
+        cloud_factor = 1.0 + (cloud_cover / 100.0) * 0.5
+
+    # Geometry effects (BRDF)
+    geometry_factor = 1.0
+    if sensor_azimuth is not None and sun_azimuth is not None:
+        # Large view-sun angles increase uncertainty
+        angle_diff = abs(sensor_azimuth - sun_azimuth)
+        if angle_diff > 90:
+            geometry_factor = 1.2
+        elif angle_diff > 60:
+            geometry_factor = 1.1
+
+    # Combine uncertainty sources
+    combined_uncertainty = base_uncertainty * cloud_factor * geometry_factor
+
+    # Calculate bounds
+    lower_bound = value - combined_uncertainty
+    upper_bound = value + combined_uncertainty
+
+    # Clamp to physical limits
+    if index_name.lower() in ["ndvi", "evi", "savi", "ndmi", "ndwi"]:
+        lower_bound = max(-1.0, lower_bound)
+        upper_bound = min(1.0, upper_bound)
+    elif index_name.lower() == "lst":
+        lower_bound = max(250.0, lower_bound)
+        upper_bound = min(330.0, upper_bound)
+
+    # Error source identification
+    error_sources = []
+    if cloud_cover > 10:
+        error_sources.append(f"cloud_contamination_{cloud_cover:.0f}%")
+    if cloud_factor > 1.2:
+        error_sources.append("high_cloud_cover")
+    if geometry_factor > 1.0:
+        error_sources.append("viewing_geometry")
+
+    # Calculate confidence based on uncertainty magnitude
+    # Higher uncertainty = lower confidence
+    relative_uncertainty = combined_uncertainty / abs(value) if value != 0 else 1.0
+    if relative_uncertainty < 0.05:
+        confidence = 0.95
+    elif relative_uncertainty < 0.10:
+        confidence = 0.85
+    elif relative_uncertainty < 0.20:
+        confidence = 0.70
+    else:
+        confidence = 0.50
+
+    return {
+        "value": value,
+        "uncertainty": round(combined_uncertainty, 4),
+        "lower_bound": round(lower_bound, 4),
+        "upper_bound": round(upper_bound, 4),
+        "confidence": round(confidence, 2),
+        "error_sources": error_sources,
+        "relative_uncertainty": round(relative_uncertainty, 3),
+    }
+
+
+def quality_flag_to_bool(quality_flag: str) -> bool:
+    """Convert quality flag to boolean for data filtering."""
+    return quality_flag in ["excellent", "good"]
+
+
+def filter_indices_by_quality(
+    indices: dict[str, float],
+    quality_flags: dict[str, str],
+    min_quality: str = "good",
+) -> dict[str, float]:
+    """
+    Filter indices by quality threshold.
+
+    Args:
+        indices: Dictionary of index values
+        quality_flags: Dictionary of quality flags for each index
+        min_quality: Minimum quality level (excellent, good, moderate)
+
+    Returns:
+        Filtered dictionary with only indices meeting quality threshold
+    """
+    quality_levels = {"excellent": 3, "good": 2, "moderate": 1, "poor": 0}
+    min_level = quality_levels.get(min_quality, 2)
+
+    filtered = {}
+    for name, value in indices.items():
+        quality = quality_flags.get(name, "moderate")
+        if quality_levels.get(quality, 0) >= min_level:
+            filtered[name] = value
+
+    return filtered

@@ -15,6 +15,7 @@ from app.config import get_settings
 from app.db.base import async_session_maker
 from app.models.alert import Alert, AlertSeverity, AlertType
 from app.models.field import Field
+from app.models.satellite import SatelliteData
 from app.services.drought.spei import calculate_spei_for_location
 from app.services.drought.classifier import classify_drought
 

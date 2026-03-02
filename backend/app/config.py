@@ -95,9 +95,9 @@ class Settings(BaseSettings):
     sentinel2_collection_id: str = "COPERNICUS/S2_SR_HARMONIZED"
 
     # Saudi Arabia Region Bounds (Eastern Province)
-    # Accurate bounds for Eastern Province: Al-Qatif to Saudi border
+    # Accurate bounds for Eastern Province: Extends from Hafar Al-Batin to UAE border
     eastern_province_bounds: tuple[float, float, float, float] = (
-        49.0,   # West longitude (Al-Qatif area)
+        45.0,   # West longitude (Hafar Al-Batin area)
         24.0,   # South latitude (Rub' al-Khali border)
         55.0,   # East longitude (Saudi/UAE border area)
         28.0,   # North latitude (Northern EP border)
@@ -105,13 +105,13 @@ class Settings(BaseSettings):
 
     # Major agricultural districts in Eastern Province
     eastern_province_districts: dict[str, tuple[float, float, float, float]] = {
-        "al_ahsa": (49.5, 22.0, 50.0, 26.0),      # Al-Hasa Oasis
+        "al_ahsa": (49.5, 25.0, 50.0, 26.0),      # Al-Hasa Oasis (corrected lat)
         "qatif": (50.0, 26.0, 50.5, 26.6),         # Al-Qatif
         "hofuf": (49.3, 25.0, 49.8, 25.6),         # Al-Hofuf
         "dammam": (50.0, 26.2, 50.5, 26.5),         # Dammam area
         "khobar": (50.2, 26.2, 50.5, 26.5),         # Al-Khobar
         "jubail": (49.5, 26.8, 50.2, 27.2),         # Al-Jubail
-        "hafar_al_batin": (45.5, 27.5, 46.5, 28.5), # Hafar Al-Batin
+        "hafar_al_batin": (45.5, 27.5, 46.5, 28.5), # Hafar Al-Batin (now within bounds)
     }
 
     # Weather API (PME - Presidency of Meteorology and Environment)
