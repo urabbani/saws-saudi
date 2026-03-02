@@ -5,11 +5,11 @@ Satellite imagery and vegetation indices.
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import Enum as PyEnum
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, func
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from app.models.field import Field
 
 
-class SatelliteSource(str, Enum):
+class SatelliteSource(str, PyEnum):
     """Satellite data sources."""
 
     MODIS = "modis"  # MOD13Q1 (250m, daily)
@@ -61,7 +61,7 @@ class SatelliteData(Base):
 
     # Source information
     source: Mapped[str] = mapped_column(
-        Enum(SatelliteSource, name="satellite_source", create_constraint=True),
+        Enum("modis", "landsat", "sentinel1", "sentinel2", "planet", name="satellite_source"),
         nullable=False,
         index=True,
     )
@@ -101,7 +101,7 @@ class SatelliteData(Base):
 
     # Additional metadata (JSON)
     # Stores processing parameters, quality flags, etc.
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    satellite_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Quality score (0-1, higher is better)
     quality_score: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)

@@ -307,8 +307,24 @@ export class WSClient {
 
 /**
  * Create global WebSocket client instance
+ *
+ * Derives WebSocket URL from current page host for WSL compatibility
+ * Falls back to environment variable if set
  */
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/api/v1/ws/alerts';
+const getWebSocketUrl = (): string => {
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+
+  // Derive from current page's protocol and host
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host; // e.g., "192.168.4.165:3000"
+  const port = host.includes(':3000') ? ':8000' : ''; // Use backend port if frontend is on 3000
+
+  return `${protocol}//${host.replace(':3000', ':8000')}/api/v1/ws/alerts`;
+};
+
+const WS_URL = getWebSocketUrl();
 export const wsClient = new WSClient(WS_URL);
 
 /**

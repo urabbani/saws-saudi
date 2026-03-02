@@ -4,7 +4,8 @@
  * API calls for agricultural field management
  */
 
-import { apiClient, PaginatedResponse, PaginationParams } from './api';
+import { apiClient } from './api';
+import type { PaginatedResponse, PaginationParams } from './api';
 import type { FieldData } from '@/types';
 
 /**

@@ -5,7 +5,8 @@
  * Axios instance with interceptors for API communication
  */
 
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios from 'axios';
+import type { AxiosError, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
 
 // API base URL - configurable via environment variable
@@ -26,7 +27,7 @@ export const api = axios.create({
  * Request interceptor - adds auth token
  */
 api.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     // Get token from localStorage
     const token = localStorage.getItem('saws_token');
     if (token) {
@@ -38,7 +39,7 @@ api.interceptors.request.use(
 
     return config;
   },
-  (error) => {
+  (error: AxiosError) => {
     return Promise.reject(error);
   }
 );
@@ -47,7 +48,7 @@ api.interceptors.request.use(
  * Response interceptor - handles errors and response formatting
  */
 api.interceptors.response.use(
-  (response: AxiosResponse) => {
+  (response) => {
     // Add process time header to response data if available
     const processTime = response.headers['x-process-time'];
     if (processTime && response.data) {

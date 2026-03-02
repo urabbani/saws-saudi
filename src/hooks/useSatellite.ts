@@ -52,8 +52,7 @@ export function useSatelliteImages(params: {
 }) {
   return useQuery({
     queryKey: [...satelliteKeys.images(), params],
-    queryFn: () =>
-      import('./services/satellite').then((m) => m.listSatelliteImages(params)),
+    queryFn: () => listSatelliteImages(params),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

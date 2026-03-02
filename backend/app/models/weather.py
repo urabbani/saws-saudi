@@ -5,17 +5,17 @@ Current conditions, forecasts, and historical weather data.
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import Enum as PyEnum
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
 
-class WeatherDataType(str, Enum):
+class WeatherDataType(str, PyEnum):
     """Types of weather data."""
 
     CURRENT = "current"  # Current conditions
@@ -48,7 +48,7 @@ class WeatherData(Base):
 
     # Data type
     data_type: Mapped[str] = mapped_column(
-        Enum(WeatherDataType, name="weather_data_type", create_constraint=True),
+        Enum("current", "forecast", "historical", name="weather_data_type"),
         nullable=False,
         index=True,
     )
@@ -119,7 +119,8 @@ class DailyForecast(Base):
     # Primary key
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
-        primary_key_key=lambda: uuid4().hex,
+        primary_key=True,
+        default=lambda: uuid4().hex,
     )
 
     # Location

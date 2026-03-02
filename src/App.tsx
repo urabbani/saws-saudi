@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './App.css';
 import { Header } from '@/sections/Header';
 import { DashboardOverview } from '@/sections/DashboardOverview';
@@ -12,12 +13,28 @@ import { FieldDetailModal } from '@/sections/FieldDetailModal';
 import { alerts as initialAlerts } from '@/data/mockData';
 import type { FieldData, Alert } from '@/types';
 import { Toaster } from '@/components/ui/sonner';
+import { useRealtimeAlerts } from '@/hooks';
 
-function App() {
+// Create React Query client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1,
+    },
+  },
+});
+
+function AppContent() {
   const [selectedField, setSelectedField] = useState<FieldData | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Initialize real-time alerts via WebSocket
+  useRealtimeAlerts((newAlert) => {
+    setAlerts(prev => [newAlert, ...prev].slice(0, 50)); // Keep last 50 alerts
+  });
 
   // Simulate initial loading
   useEffect(() => {
@@ -135,6 +152,15 @@ function App() {
 
       <Toaster position="top-right" />
     </div>
+  );
+}
+
+// Wrapper component with QueryClientProvider
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
+    </QueryClientProvider>
   );
 }
 

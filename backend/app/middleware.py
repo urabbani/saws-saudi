@@ -254,10 +254,10 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                     "error": {
                         "code": "INTERNAL_SERVER_ERROR",
                         "message": "An unexpected error occurred",
+                        "details": str(e) if settings.debug else None,
                     }
-                    if settings.debug
-                    else {"code": "INTERNAL_SERVER_ERROR", "message": "An unexpected error occurred"},
-                }
+                },
+            )
 
 
 def setup_middleware(app: FastAPI) -> None:

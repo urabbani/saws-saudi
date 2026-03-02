@@ -5,12 +5,12 @@ Drought and crop health alerts.
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import Enum as PyEnum
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from app.models.field import Field
 
 
-class AlertSeverity(str, Enum):
+class AlertSeverity(str, PyEnum):
     """Alert severity levels following WMO standards."""
 
     CRITICAL = "critical"  # Extreme drought, crop failure imminent
@@ -28,7 +28,7 @@ class AlertSeverity(str, Enum):
     INFO = "info"  # Informational updates
 
 
-class AlertType(str, Enum):
+class AlertType(str, PyEnum):
     """Types of alerts."""
 
     DROUGHT = "drought"  # Drought condition detected
@@ -74,12 +74,14 @@ class Alert(Base):
 
     # Alert classification
     severity: Mapped[str] = mapped_column(
-        Enum(AlertSeverity, name="alert_severity", create_constraint=True),
+        Enum("critical", "warning", "advisory", "info", name="alert_severity"),
         nullable=False,
         index=True,
     )
     alert_type: Mapped[str] = mapped_column(
-        Enum(AlertType, name="alert_type", create_constraint=True),
+        Enum("drought", "low_ndvi", "soil_moisture", "extreme_temperature",
+              "pest_detection", "irrigation_needed", "frost_warning", "harvest_ready",
+              name="alert_type"),
         nullable=False,
         index=True,
     )
@@ -94,7 +96,7 @@ class Alert(Base):
     # Alert data (JSON)
     # Stores SPEI value, NDVI anomaly, temperature, etc.
     data: Mapped[dict | None] = mapped_column(
-        func.jsonb,
+        JSONB,
         nullable=True,
     )
 

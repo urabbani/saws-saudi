@@ -72,7 +72,7 @@ class Field(Base):
 
     # Crop information
     crop_type: Mapped[str] = mapped_column(
-        Enum(CropType, name="crop_type", create_constraint=True),
+        Enum("dates", "wheat", "tomatoes", "alfalfa", "sorghum", "citrus", "other", name="crop_type"),
         nullable=False,
         index=True,
     )

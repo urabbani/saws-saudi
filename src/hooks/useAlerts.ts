@@ -15,12 +15,10 @@ import {
   deleteAlert,
   getUnreadCount,
   toAlertList,
-  initWebSocket,
-  subscribeToAlerts,
-  closeWebSocket,
   type AlertDetail,
   type AlertUpdate,
 } from '@/services/alerts';
+import { initWebSocket, closeWebSocket, subscribeToAlerts } from '@/services/websocket';
 import type { Alert } from '@/types';
 
 /**
@@ -175,13 +173,28 @@ export function useCriticalAlerts() {
 
 /**
  * Hook for real-time alerts via WebSocket
+ *
+ * Note: WebSocket endpoint not yet implemented in backend
+ * This hook safely handles connection failures
  */
 export function useRealtimeAlerts(onNewAlert?: (alert: Alert) => void) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    // Only initialize WebSocket if explicitly enabled via environment variable
+    const wsEnabled = import.meta.env.VITE_ENABLE_WEBSOCKET === 'true';
+
+    if (!wsEnabled) {
+      return;
+    }
+
     // Initialize WebSocket connection
-    initWebSocket();
+    try {
+      initWebSocket();
+    } catch (error) {
+      console.warn('WebSocket initialization disabled - backend endpoint not implemented');
+      return;
+    }
 
     // Subscribe to new alerts
     const unsubscribe = subscribeToAlerts((alert) => {
@@ -203,7 +216,7 @@ export function useRealtimeAlerts(onNewAlert?: (alert: Alert) => void) {
   }, [queryClient, onNewAlert]);
 
   return {
-    isConnected: true, // wsClient.isConnected would be better
+    isConnected: false, // TODO: Check wsClient.isConnected when endpoint is implemented
   };
 }
 

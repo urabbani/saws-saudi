@@ -44,11 +44,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
 
     # Startup
-    logger.info("initializing_database")
-    from app.db.base import init_db
+    try:
+        logger.info("initializing_database")
+        from app.db.base import init_db
 
-    await init_db()
-    logger.info("database_initialized")
+        await init_db()
+        logger.info("database_initialized")
+    except Exception as e:
+        logger.warning("database_initialization_failed", error=str(e))
+        logger.info("api_running_without_database")
 
     # TODO: Initialize Redis connection
     # TODO: Initialize Celery workers
@@ -61,10 +65,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Shutdown
     logger.info("shutting_down")
 
-    from app.db.base import close_db
+    try:
+        from app.db.base import close_db
 
-    await close_db()
-    logger.info("database_connections_closed")
+        await close_db()
+        logger.info("database_connections_closed")
+    except Exception:
+        pass
 
     logger.info("shutdown_complete")
 
