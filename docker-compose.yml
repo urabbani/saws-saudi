@@ -1,0 +1,258 @@
+# ==========================================
+# SAWS - Saudi AgriDrought Warning System
+# Docker Compose Configuration
+# ==========================================
+# Development deployment with all services
+
+version: '3.8'
+
+services:
+  # ==========================================
+  # PostgreSQL + PostGIS Database
+  # ==========================================
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: saws-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: saws_user
+      POSTGRES_PASSWORD: saws_password
+      POSTGRES_DB: saws_db
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saws_user -d saws_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - saws-network
+
+  # ==========================================
+  # Redis (Cache & Celery Broker)
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: saws-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - saws-network
+
+  # ==========================================
+  # Backend API (FastAPI)
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saws-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Application
+      APP_NAME: SAWS
+      ENVIRONMENT: development
+      DEBUG: "true"
+
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: saws_user
+      DB_PASSWORD: saws_password
+      DB_NAME: saws_db
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Security
+      SECRET_KEY: saws-dev-secret-key-32chars-minimum-for-jwt-tokens
+
+      # API
+      VITE_API_BASE_URL: http://localhost:8000
+
+      # Google Earth Engine (optional for dev)
+      GEE_SERVICE_ACCOUNT_KEY_PATH: /app/config/credentials.json
+
+    volumes:
+      - ./backend:/app
+      - ./backend/venv:/app/venv
+      - gee_credentials:/app/config
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - saws-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ==========================================
+  # Celery Worker (Background Tasks)
+  # ==========================================
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saws-celery-worker
+    restart: unless-stopped
+    environment:
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: saws_user
+      DB_PASSWORD: saws_password
+      DB_NAME: saws_db
+
+      # Redis (Celery broker)
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+
+      # Google Earth Engine
+      GEE_SERVICE_ACCOUNT_KEY_PATH: /app/config/credentials.json
+
+    volumes:
+      - ./backend:/app
+      - ./backend/venv:/app/venv
+      - gee_credentials:/app/config
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - saws-network
+    command: celery -A app.tasks worker --loglevel=info
+
+  # ==========================================
+  # Celery Beat (Task Scheduler)
+  # ==========================================
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saws-celery-beat
+    restart: unless-stopped
+    environment:
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: saws_user
+      DB_PASSWORD: saws_password
+      DB_NAME: saws_db
+
+      # Redis (Celery broker)
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+
+    volumes:
+      - ./backend:/app
+      - ./backend/venv:/app/venv
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - saws-network
+    command: celery -A app.tasks beat --loglevel=info
+
+  # ==========================================
+  # Frontend (React + Vite)
+  # ==========================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: saws-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+      VITE_WS_URL: ws://localhost:8000/api/v1/ws/alerts
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - saws-network
+    command: npm run dev -- --host
+
+  # ==========================================
+  # pgAdmin (PostgreSQL Management - Optional)
+  # ==========================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: saws-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@saws.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - saws-network
+    profiles:
+      - tools
+
+  # ==========================================
+  # Redis Commander (Redis Management - Optional)
+  # ==========================================
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: saws-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - saws-network
+    profiles:
+      - tools
+
+# ==========================================
+# NETWORKS
+# ==========================================
+networks:
+  saws-network:
+    driver: bridge
+    name: saws-network
+
+# ==========================================
+# VOLUMES
+# ==========================================
+volumes:
+  postgres_data:
+    name: saws-postgres-data
+  redis_data:
+    name: saws-redis-data
+  pgadmin_data:
+    name: saws-pgadmin-data
+  gee_credentials:
+    name: saws-gee-credentials

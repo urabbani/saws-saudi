@@ -10,3 +10,6 @@ export * from './useWeather';
 export * from './useAlerts';
 export * from './useSatellite';
 export * from './useAnalytics';
+
+// Re-export commonly used hooks
+export { useRealtimeAlerts } from './useAlerts';
