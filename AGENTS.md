@@ -169,6 +169,38 @@ eastern_province_bounds = (49.0, 24.0, 55.0, 28.0)
 
 ---
 
+## Development Environment
+
+### WSL/Windows Filesystem Workarounds
+
+The project is hosted on WSL filesystem (`/mnt/d/saws-saudi`), which requires specific workarounds:
+
+**Frontend**:
+```bash
+# Use --no-bin-links to avoid symlink errors on Windows filesystem
+npm install --no-bin-links
+
+# Start dev server with direct node execution
+node node_modules/vite/bin/vite.js --host 0.0.0.0 --port 3000
+```
+
+**Backend**:
+```bash
+# Use system Python with --user flag (venv doesn't work well on /mnt/d/)
+pip install --user -r requirements/base.txt
+pip install --user orjson  # Required for ORJSONResponse
+
+# Start server
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Server URLs**:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+---
+
 ## OpenCode Delegation
 
 For autonomous multi-file tasks, OpenCode is available:

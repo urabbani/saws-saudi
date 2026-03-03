@@ -12,48 +12,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-### Frontend
+### Frontend (WSL/Windows filesystem workaround)
 ```bash
-# Install dependencies
-npm install
+# Install dependencies (no-bin-links for WSL)
+npm install --no-bin-links
 
-# Start development server with HMR
-npm run dev
-
-# Build for production
-npm run build
-
-# Run ESLint
-npm run lint
-
-# Preview production build locally
-npm run preview
+# Start development server
+node node_modules/vite/bin/vite.js --host 0.0.0.0 --port 3000
 ```
 
-### Backend
+### Backend (WSL - use system Python)
 ```bash
 cd backend
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-
-# Install dependencies
-pip install -r requirements/dev.txt
-
-# Initialize database
-python scripts/init_db.py
-python scripts/seed_data.py
+# Install dependencies (WSL workaround - use system Python)
+pip install --user -r requirements/base.txt
+pip install --user -r requirements/geospatial.txt
+pip install --user orjson
 
 # Run development server
-uvicorn app.main:app --reload
-
-# Run Celery worker
-celery -A app.tasks worker --loglevel=info
-
-# Run Celery beat (scheduler)
-celery -A app.tasks beat --loglevel=info
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+**Server URLs**:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8000
+- API Docs: http://localhost:8000/docs (when DEBUG=true)
 
 ## Technology Stack
 

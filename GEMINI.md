@@ -110,21 +110,41 @@ result = validate_index_value("NDVI", ndvi_value, satellite_source="modis")
 
 ## Development Commands
 
-### Frontend
+### Frontend (WSL/Windows filesystem workaround)
 ```bash
-npm install
-npm run dev
+# Install dependencies (WSL workaround for symlink issues)
+npm install --no-bin-links
+
+# Start development server (direct node execution)
+node node_modules/vite/bin/vite.js --host 0.0.0.0 --port 3000
+
+# Build for production
 npm run build
 ```
 
-### Backend
+### Backend (WSL - use system Python)
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements/dev.txt
-uvicorn app.main:app --reload
+
+# Install dependencies (use --user flag for WSL)
+pip install --user -r requirements/base.txt
+pip install --user -r requirements/geospatial.txt
+pip install --user orjson  # Required for ORJSONResponse
+
+# Run development server
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+### Server URLs
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8000
+- API Docs: http://localhost:8000/docs (when DEBUG=true)
+
+### WSL-Specific Notes
+- The project is on WSL filesystem (`/mnt/d/`) which cannot create Unix symlinks
+- Use `pip install --user` instead of virtual environments
+- Use `npm install --no-bin-links` to avoid symlink errors
+- Use direct node execution: `node node_modules/vite/bin/vite.js`
 
 ---
 

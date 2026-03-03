@@ -210,53 +210,39 @@ docker-compose exec backend python scripts/seed_data.py
 ### Frontend Development
 
 ```bash
-# Install dependencies
-npm install
+# Install dependencies (WSL workaround)
+npm install --no-bin-links
 
 # Start development server
-npm run dev
-
-# Run type checking
-npm run type-check
-
-# Run linting
-npm run lint
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
+node node_modules/vite/bin/vite.js --host 0.0.0.0 --port 3000
 ```
+
+**Alternative (if npm install fails)**:
+```bash
+# Direct node execution
+node node_modules/vite/bin/vite.js --host 0.0.0.0 --port 3000
+```
+
+**Access Frontend**: http://localhost:3000
 
 ### Backend Development
 
 ```bash
 cd backend
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements/dev.txt
-
-# Install pre-commit hooks
-pre-commit install
-
-# Initialize database
-python scripts/init_db.py
-python scripts/seed_data.py
+# Install dependencies (WSL/Windows filesystem - use system Python)
+pip install --user -r requirements/base.txt
+pip install --user -r requirements/geospatial.txt
+pip install --user orjson
 
 # Run development server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Run Celery worker (separate terminal)
-celery -A app.tasks worker --loglevel=info
-
-# Run Celery beat scheduler (separate terminal)
-celery -A app.tasks beat --loglevel=info
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+**WSL Note**: On Windows filesystem (mnt/d/), virtual environments have symlink issues. Install to user directory with `pip install --user`.
+
+**Access Backend**: http://localhost:8000
+**API Docs**: http://localhost:8000/docs (when DEBUG=true)
 
 ### Database Setup
 
