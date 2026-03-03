@@ -137,20 +137,27 @@ export async function getUnreadCount(): Promise<number> {
 
 /**
  * Convert API alert to frontend format
+ * Note: Alert interface now matches API response format, so minimal conversion needed
  */
 export function toAlert(detail: AlertDetail): Alert {
   return {
     id: detail.id,
-    fieldId: detail.field_id,
+    user_id: detail.user_id,
+    field_id: detail.field_id,
     severity: detail.severity,
-    type: detail.alert_type as any,
+    alert_type: detail.alert_type,
     title: detail.title,
     message: detail.message,
-    location: detail.district || 'Unknown',
-    timestamp: new Date(detail.created_at),
-    read: detail.is_read,
-    actionRequired: detail.severity === 'critical' || detail.severity === 'warning',
-    metadata: detail.data,
+    district: detail.district,
+    priority: detail.priority,
+    data: detail.data,
+    is_read: detail.is_read,
+    read_at: detail.read_at,
+    email_sent: detail.email_sent,
+    sms_sent: detail.sms_sent,
+    whatsapp_sent: detail.whatsapp_sent,
+    created_at: detail.created_at,
+    expires_at: detail.expires_at,
   };
 }
 
@@ -159,9 +166,11 @@ export function toAlert(detail: AlertDetail): Alert {
  */
 export function toAlertList(
   response: PaginatedResponse<AlertDetail>
-): { total: number; items: Alert[] } {
+): { total: number; skip: number; limit: number; items: Alert[] } {
   return {
     total: response.total,
+    skip: response.skip || 0,
+    limit: response.limit || 20,
     items: response.items.map(toAlert),
   };
 }

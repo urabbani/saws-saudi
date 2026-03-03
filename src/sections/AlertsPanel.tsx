@@ -3,11 +3,12 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Bell, 
-  AlertTriangle, 
-  AlertCircle, 
+import {
+  Bell,
+  AlertTriangle,
+  AlertCircle,
   Info,
+  ShieldAlert,
   X,
   MapPin,
   Clock,
@@ -29,7 +30,7 @@ interface AlertsPanelProps {
   onRead: (alertId: string) => void;
 }
 
-type FilterType = 'all' | 'critical' | 'warning' | 'info';
+type FilterType = 'all' | 'critical' | 'warning' | 'advisory' | 'info';
 
 const severityConfig = {
   critical: {
@@ -47,6 +48,14 @@ const severityConfig = {
     bgColor: 'bg-amber-50',
     borderColor: 'border-amber-200',
     badgeColor: 'bg-amber-100 text-amber-700'
+  },
+  advisory: {
+    label: 'Advisory',
+    icon: ShieldAlert,
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-50',
+    borderColor: 'border-yellow-200',
+    badgeColor: 'bg-yellow-100 text-yellow-700'
   },
   info: {
     label: 'Info',
@@ -83,14 +92,14 @@ function AlertCard({
   onRead: () => void;
   onClick: () => void;
 }) {
-  const config = severityConfig[alert.severity];
+  const config = severityConfig[alert.severity] || severityConfig.info;
   const Icon = config.icon;
 
   return (
     <div
       className={`
         group relative p-2.5 rounded-lg border transition-all cursor-pointer
-        ${alert.read ? 'bg-gray-50 border-gray-100' : `${config.bgColor} ${config.borderColor}`}
+        ${alert.is_read ? 'bg-gray-50 border-gray-100' : `${config.bgColor} ${config.borderColor}`}
         hover:shadow-md
       `}
       onClick={() => {
@@ -98,7 +107,7 @@ function AlertCard({
         onClick();
       }}
     >
-      {!alert.read && (
+      {!alert.is_read && (
         <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full ${config.color.replace('text-', 'bg-')}`} />
       )}
 
@@ -114,22 +123,24 @@ function AlertCard({
             </Badge>
             <span className="text-xs text-gray-400 flex items-center gap-0.5">
               <Clock className="w-2.5 h-2.5" />
-              {formatTimestamp(alert.timestamp)}
+              {formatTimestamp(alert.created_at)}
             </span>
           </div>
 
-          <h4 className={`font-medium text-xs mb-0.5 ${alert.read ? 'text-gray-600' : 'text-gray-900'} leading-tight`}>
+          <h4 className={`font-medium text-xs mb-0.5 ${alert.is_read ? 'text-gray-600' : 'text-gray-900'} leading-tight`}>
             {alert.title}
           </h4>
 
           <p className="text-xs text-gray-500 line-clamp-1 mb-1">
-            {alert.description}
+            {alert.message}
           </p>
 
-          <div className="flex items-center gap-0.5 text-xs text-gray-400">
-            <MapPin className="w-2.5 h-2.5" />
-            <span className="truncate">{alert.location}</span>
-          </div>
+          {alert.district && (
+            <div className="flex items-center gap-0.5 text-xs text-gray-400">
+              <MapPin className="w-2.5 h-2.5" />
+              <span className="truncate">{alert.district}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -169,12 +180,12 @@ export function AlertsPanel({ alerts, onDismiss, onRead }: AlertsPanelProps) {
     return () => observer.disconnect();
   }, []);
 
-  const filteredAlerts = alerts.filter(alert => 
+  const filteredAlerts = alerts.filter(alert =>
     filter === 'all' || alert.severity === filter
   );
 
-  const unreadCount = alerts.filter(a => !a.read).length;
-  const criticalCount = alerts.filter(a => a.severity === 'critical' && !a.read).length;
+  const unreadCount = alerts.filter(a => !a.is_read).length;
+  const criticalCount = alerts.filter(a => a.severity === 'critical' && !a.is_read).length;
 
   return (
     <Card
@@ -200,10 +211,11 @@ export function AlertsPanel({ alerts, onDismiss, onRead }: AlertsPanelProps) {
         {/* Filter Tabs */}
         <div className="flex items-center gap-1">
           {[
-            { id: 'all', label: 'All', count: alerts.filter(a => !a.read).length },
-            { id: 'critical', label: 'Critical', count: alerts.filter(a => a.severity === 'critical' && !a.read).length },
-            { id: 'warning', label: 'Warning', count: alerts.filter(a => a.severity === 'warning' && !a.read).length },
-            { id: 'info', label: 'Info', count: alerts.filter(a => a.severity === 'info' && !a.read).length }
+            { id: 'all', label: 'All', count: alerts.filter(a => !a.is_read).length },
+            { id: 'critical', label: 'Critical', count: alerts.filter(a => a.severity === 'critical' && !a.is_read).length },
+            { id: 'warning', label: 'Warning', count: alerts.filter(a => a.severity === 'warning' && !a.is_read).length },
+            { id: 'advisory', label: 'Advisory', count: alerts.filter(a => a.severity === 'advisory' && !a.is_read).length },
+            { id: 'info', label: 'Info', count: alerts.filter(a => a.severity === 'info' && !a.is_read).length }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -275,21 +287,21 @@ export function AlertsPanel({ alerts, onDismiss, onRead }: AlertsPanelProps) {
             <>
               <DialogHeader>
                 <div className="flex items-center gap-3 mb-2">
-                  <div className={`p-2 rounded-xl ${severityConfig[selectedAlert.severity].bgColor}`}>
+                  <div className={`p-2 rounded-xl ${(severityConfig[selectedAlert.severity] || severityConfig.info).bgColor}`}>
                     {(() => {
-                      const Icon = severityConfig[selectedAlert.severity].icon;
-                      return <Icon className={`w-5 h-5 ${severityConfig[selectedAlert.severity].color}`} />;
+                      const Icon = (severityConfig[selectedAlert.severity] || severityConfig.info).icon;
+                      return <Icon className={`w-5 h-5 ${(severityConfig[selectedAlert.severity] || severityConfig.info).color}`} />;
                     })()}
                   </div>
                   <div>
                     <DialogTitle className="text-base">{selectedAlert.title}</DialogTitle>
                     <DialogDescription>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className={severityConfig[selectedAlert.severity].badgeColor}>
-                          {severityConfig[selectedAlert.severity].label}
+                        <Badge variant="outline" className={(severityConfig[selectedAlert.severity] || severityConfig.info).badgeColor}>
+                          {(severityConfig[selectedAlert.severity] || severityConfig.info).label}
                         </Badge>
                         <span className="text-xs text-gray-400">
-                          {formatTimestamp(selectedAlert.timestamp)}
+                          {formatTimestamp(selectedAlert.created_at)}
                         </span>
                       </div>
                     </DialogDescription>
@@ -298,21 +310,14 @@ export function AlertsPanel({ alerts, onDismiss, onRead }: AlertsPanelProps) {
               </DialogHeader>
 
               <div className="space-y-4 mt-4">
-                <p className="text-sm text-gray-600">{selectedAlert.description}</p>
+                <p className="text-sm text-gray-600">{selectedAlert.message}</p>
 
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-700">{selectedAlert.location}</span>
-                  </div>
-                </div>
-
-                {selectedAlert.coordinates && (
+                {selectedAlert.district && (
                   <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Coordinates</p>
-                    <p className="font-mono text-sm text-gray-700">
-                      {selectedAlert.coordinates[0].toFixed(4)}, {selectedAlert.coordinates[1].toFixed(4)}
-                    </p>
+                    <div className="flex items-center gap-2 text-sm">
+                      <MapPin className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-700">{selectedAlert.district}</span>
+                    </div>
                   </div>
                 )}
 

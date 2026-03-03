@@ -35,13 +35,22 @@ export interface SatelliteSource {
 
 export interface Alert {
   id: string;
-  severity: 'critical' | 'warning' | 'info';
+  user_id: string;
+  field_id?: string;
+  severity: 'critical' | 'warning' | 'advisory' | 'info';
+  alert_type: 'drought' | 'low_ndvi' | 'soil_moisture' | 'extreme_temperature' | 'pest_detection' | 'irrigation_needed' | 'frost_warning' | 'harvest_ready';
   title: string;
-  description: string;
-  location: string;
-  timestamp: string;
-  read: boolean;
-  coordinates?: [number, number];
+  message: string;
+  district?: string;
+  priority: number;
+  data?: Record<string, unknown>;
+  is_read: boolean;
+  read_at?: string;
+  email_sent: boolean;
+  sms_sent: boolean;
+  whatsapp_sent: boolean;
+  created_at: string;
+  expires_at?: string;
 }
 
 export interface FieldData {

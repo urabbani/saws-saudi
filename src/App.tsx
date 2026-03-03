@@ -48,8 +48,8 @@ function AppContent() {
   useEffect(() => {
     const interval = setInterval(() => {
       // Randomly mark alerts as read after some time
-      setAlerts(prev => prev.map(alert => 
-        !alert.read && Math.random() > 0.95 ? { ...alert, read: true } : alert
+      setAlerts(prev => prev.map(alert =>
+        !alert.is_read && Math.random() > 0.95 ? { ...alert, is_read: true } : alert
       ));
     }, 30000);
     return () => clearInterval(interval);
@@ -65,11 +65,11 @@ function AppContent() {
 
   const handleAlertRead = useCallback((alertId: string) => {
     setAlerts(prev => prev.map(a =>
-      a.id === alertId ? { ...a, read: true } : a
+      a.id === alertId ? { ...a, is_read: true } : a
     ));
   }, []);
 
-  const unreadAlertsCount = alerts.filter(a => !a.read).length;
+  const unreadAlertsCount = alerts.filter(a => !a.is_read).length;
 
   if (isLoading) {
     return (

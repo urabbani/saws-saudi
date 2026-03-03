@@ -98,7 +98,7 @@ def create_app() -> FastAPI:
     setup_middleware(app)
 
     # Include routers
-    from app.api.v1 import fields, satellite, weather, alerts, analytics, districts
+    from app.api.v1 import fields, satellite, weather, alerts, analytics, districts, websocket
 
     api_v1_prefix = settings.api_v1_prefix
 
@@ -108,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(alerts.router, prefix=api_v1_prefix, tags=["Alerts"])
     app.include_router(analytics.router, prefix=api_v1_prefix, tags=["Analytics"])
     app.include_router(districts.router, prefix=api_v1_prefix, tags=["Districts"])
+    app.include_router(websocket.router, prefix=api_v1_prefix, tags=["WebSocket"])
 
     # Health check endpoint
     @app.get("/health", tags=["Health"])
